@@ -7,7 +7,6 @@ def process_multiply(pos_1, pos_2, res_pos, program):
   program[res_pos] = val
 
 with open('./input.txt') as fp:
-
   for line in fp:
     codes = [int(c) for c in line.split(',')]
     i = 0
