@@ -107,16 +107,17 @@ def compute_thruster_signal(codes, phase_settings):
     inp_signal = compute_amp_signal(codes[:], inp_signal, p)
   return inp_signal
 
-def calc_max_signal(inp, i, codes):
+def calc_max_signal(phase_settings, i, codes):
   res = 0
-  if i >= len(inp):
-    res = compute_thruster_signal(codes[:], inp[:])
+  if i >= len(phase_settings):
+    res = compute_thruster_signal(codes[:], phase_settings[:])
   else:
-    for j in range(0, 5):
-      inp[i] = j
-      res = max(res, calc_max_signal(inp, i+1, codes))
+    for j in range(i, len(phase_settings)):
+      phase_settings[i], phase_settings[j] = phase_settings[j], phase_settings[i]
+      res = max(res, calc_max_signal(phase_settings, i+1, codes))
+      phase_settings[i], phase_settings[j] = phase_settings[j], phase_settings[i]
   return res
 
 with open('./input.txt') as fp:
   codes = [int(c) for c in fp.readline().split(',')]
-  print(calc_max_signal([0,0,0,0,0], 0, codes))
+  print(calc_max_signal([0,1,2,3,4], 0, codes))
