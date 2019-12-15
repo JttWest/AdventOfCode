@@ -12,17 +12,6 @@ def process_input(inp, res_pos, program):
 def process_output(val):
   return val
 
-# returns new instruction pointer
-def process_jump_if_t(v1, v2, instr_ptr):
-  if v1 != 0:
-    return v2
-  return instr_ptr + 3
-
-def process_jump_if_f(v1, v2, instr_ptr):
-  if v1 == 0:
-    return v2
-  return instr_ptr + 3
-
 def process_less_than(v1, v2, res_pos, program):
   if v1 < v2:
     program[res_pos] = 1
@@ -44,73 +33,96 @@ class Operation:
 
   def is_immediate_parameter(self, index):
     positions = self.opcode // 100
-    for i in range(0, index):
+    for _ in range(0, index):
       positions //= 10
     return positions % 10 == 1
 
-def compute_amp_signal(codes, inp_signal, phase_setting):
-  inp_index = 0
-  i = 0
-  while i < len(codes):
-    op = Operation(codes[i])
-    opcode = op.get_opcode()
+class Amplfier:
+  def __init__(self, codes):
+    self.codes = codes
+    self.instr_ptr = 0
+    self.has_inputted_phase_setting = False
+    self.terminated = False
+  
+  def compute_amp_signal(self, phase_setting, input_signal):
+    codes = self.codes
+    while self.instr_ptr < len(codes) and not self.terminated:
+      op = Operation(codes[self.instr_ptr])
+      opcode = op.get_opcode()
 
-    if opcode == 1:
-      v1 = codes[i+1] if op.is_immediate_parameter(0) else codes[codes[i+1]]
-      v2 = codes[i+2] if op.is_immediate_parameter(1) else codes[codes[i+2]]
-      process_add(v1, v2, codes[i+3], codes)
-      i += 4
-    elif opcode == 2:
-      v1 = codes[i+1] if op.is_immediate_parameter(0) else codes[codes[i+1]]
-      v2 = codes[i+2] if op.is_immediate_parameter(1) else codes[codes[i+2]]
-      process_multiply(v1, v2, codes[i+3], codes)
-      i += 4
-    elif opcode == 3:
-      if inp_index == 0:
-        v = phase_setting
+      if opcode == 1:
+        v1 = codes[self.instr_ptr+1] if op.is_immediate_parameter(0) else codes[codes[self.instr_ptr+1]]
+        v2 = codes[self.instr_ptr+2] if op.is_immediate_parameter(1) else codes[codes[self.instr_ptr+2]]
+        process_add(v1, v2, codes[self.instr_ptr+3], codes)
+        self.instr_ptr += 4
+      elif opcode == 2:
+        v1 = codes[self.instr_ptr+1] if op.is_immediate_parameter(0) else codes[codes[self.instr_ptr+1]]
+        v2 = codes[self.instr_ptr+2] if op.is_immediate_parameter(1) else codes[codes[self.instr_ptr+2]]
+        process_multiply(v1, v2, codes[self.instr_ptr+3], codes)
+        self.instr_ptr += 4
+      elif opcode == 3:
+        if self.has_inputted_phase_setting:
+          v = input_signal
+        else:
+          v = phase_setting
+          self.has_inputted_phase_setting = True
+        process_input(v, codes[self.instr_ptr+1], codes)
+        self.instr_ptr += 2
+      elif opcode == 4:
+        v = codes[self.instr_ptr+1] if op.is_immediate_parameter(0) else codes[codes[self.instr_ptr+1]]
+        self.instr_ptr += 2
+        return process_output(v)
+      elif opcode == 5: # JUMP_IF_TRUE
+        v1 = codes[self.instr_ptr+1] if op.is_immediate_parameter(0) else codes[codes[self.instr_ptr+1]]
+        v2 = codes[self.instr_ptr+2] if op.is_immediate_parameter(1) else codes[codes[self.instr_ptr+2]]
+        if v1 != 0:
+          self.instr_ptr = v2
+        else:
+          self.instr_ptr += 3
+      elif opcode == 6: # JUMP_IF_FALSE
+        v1 = codes[self.instr_ptr+1] if op.is_immediate_parameter(0) else codes[codes[self.instr_ptr+1]]
+        v2 = codes[self.instr_ptr+2] if op.is_immediate_parameter(1) else codes[codes[self.instr_ptr+2]]
+        if v1 == 0:
+          self.instr_ptr = v2
+        else:
+          self.instr_ptr += 3
+      elif opcode == 7:
+        v1 = codes[self.instr_ptr+1] if op.is_immediate_parameter(0) else codes[codes[self.instr_ptr+1]]
+        v2 = codes[self.instr_ptr+2] if op.is_immediate_parameter(1) else codes[codes[self.instr_ptr+2]]
+        process_less_than(v1, v2, codes[self.instr_ptr+3], codes)
+        self.instr_ptr += 4
+      elif opcode == 8:
+        v1 = codes[self.instr_ptr+1] if op.is_immediate_parameter(0) else codes[codes[self.instr_ptr+1]]
+        v2 = codes[self.instr_ptr+2] if op.is_immediate_parameter(1) else codes[codes[self.instr_ptr+2]]
+        process_equal(v1, v2, codes[self.instr_ptr+3], codes)
+        self.instr_ptr += 4
+      elif opcode == 99:
+        self.terminated = True
+        return None
       else:
-        v = inp_signal
+        print(f"Unknown opcode: {codes[self.instr_ptr]}")
 
-      inp_index += 1
-      process_input(v, codes[i+1], codes)
-      i += 2
-    elif opcode == 4:
-      v = codes[i+1] if op.is_immediate_parameter(0) else codes[codes[i+1]]
-      return process_output(v)
-      i += 2
-    elif opcode == 5:
-      v1 = codes[i+1] if op.is_immediate_parameter(0) else codes[codes[i+1]]
-      v2 = codes[i+2] if op.is_immediate_parameter(1) else codes[codes[i+2]]
-      i = process_jump_if_t(v1, v2, i)
-    elif opcode == 6:
-      v1 = codes[i+1] if op.is_immediate_parameter(0) else codes[codes[i+1]]
-      v2 = codes[i+2] if op.is_immediate_parameter(1) else codes[codes[i+2]]
-      i = process_jump_if_f(v1, v2, i)
-    elif opcode == 7:
-      v1 = codes[i+1] if op.is_immediate_parameter(0) else codes[codes[i+1]]
-      v2 = codes[i+2] if op.is_immediate_parameter(1) else codes[codes[i+2]]
-      process_less_than(v1, v2, codes[i+3], codes)
-      i += 4
-    elif opcode == 8:
-      v1 = codes[i+1] if op.is_immediate_parameter(0) else codes[codes[i+1]]
-      v2 = codes[i+2] if op.is_immediate_parameter(1) else codes[codes[i+2]]
-      process_equal(v1, v2, codes[i+3], codes)
-      i += 4
-    elif opcode == 99:
+def compute_thruster_signal(codes, phase_settings, num_amps):
+  input_signal = 0
+  amps = [Amplfier(codes[:]) for _ in range(0, num_amps)]
+  curr_amp_i = 0
+  
+  while True:
+    amp = amps[curr_amp_i]
+    output_signal = amp.compute_amp_signal(phase_settings[curr_amp_i], input_signal)
+    if output_signal is None:
       break
     else:
-      print("Unknown opcode: %i".format(codes[i]))
+      input_signal = output_signal
 
-def compute_thruster_signal(codes, phase_settings):
-  inp_signal = 0
-  for p in phase_settings:
-    inp_signal = compute_amp_signal(codes[:], inp_signal, p)
-  return inp_signal
+    curr_amp_i = (curr_amp_i + 1) % num_amps
+
+  return input_signal
 
 def calc_max_signal(phase_settings, i, codes):
   res = 0
   if i >= len(phase_settings):
-    res = compute_thruster_signal(codes[:], phase_settings[:])
+    res = compute_thruster_signal(codes[:], phase_settings[:], 5)
   else:
     for j in range(i, len(phase_settings)):
       phase_settings[i], phase_settings[j] = phase_settings[j], phase_settings[i]
