@@ -71,6 +71,14 @@ class IntcodeComputer:
     else:
       return self.get_program_value(self.relative_base + program_value)
 
+  def get_result_pos(self, operation, parameter_index, memory_position):
+    parameter_mode = operation.get_parameter_mode(parameter_index)
+    program_value = self.get_program_value(memory_position)
+    if parameter_mode == Operation.ParameterMode.POSITION:
+      return program_value
+    else: # relative mode
+      return self.relative_base + program_value
+
   def excute(self, inputs):
     codes = self.codes
     while not self.terminated:
@@ -80,16 +88,19 @@ class IntcodeComputer:
       if opcode == 1:
         v1 = self.get_parameter_value(op, 0, self.instr_ptr+1)
         v2 = self.get_parameter_value(op, 1, self.instr_ptr+2)
-        process_add(v1, v2, self.get_program_value_from_instr_ptr(3), codes)
+        res_pos = self.get_result_pos(op, 2, self.instr_ptr+3)
+        process_add(v1, v2, res_pos, codes)
         self.instr_ptr += 4
       elif opcode == 2:
         v1 = self.get_parameter_value(op, 0, self.instr_ptr+1)
         v2 = self.get_parameter_value(op, 1, self.instr_ptr+2)
-        process_multiply(v1, v2, self.get_program_value_from_instr_ptr(3), codes)
+        res_pos = self.get_result_pos(op, 2, self.instr_ptr+3)
+        process_multiply(v1, v2, res_pos, codes)
         self.instr_ptr += 4
       elif opcode == 3:
+        res_pos = self.get_result_pos(op, 0, self.instr_ptr+1)
         v = inputs.pop(0)
-        process_input(v, self.get_parameter_value(op, 0, self.instr_ptr+1), codes)
+        process_input(v, res_pos, codes)
         self.instr_ptr += 2
       elif opcode == 4:
         v1 = self.get_parameter_value(op, 0, self.instr_ptr+1)
@@ -112,12 +123,14 @@ class IntcodeComputer:
       elif opcode == 7:
         v1 = self.get_parameter_value(op, 0, self.instr_ptr+1)
         v2 = self.get_parameter_value(op, 1, self.instr_ptr+2)
-        process_less_than(v1, v2, self.get_program_value_from_instr_ptr(3), codes)
+        res_pos = self.get_result_pos(op, 2, self.instr_ptr+3)
+        process_less_than(v1, v2, res_pos, codes)
         self.instr_ptr += 4
       elif opcode == 8:
         v1 = self.get_parameter_value(op, 0, self.instr_ptr+1)
         v2 = self.get_parameter_value(op, 1, self.instr_ptr+2)
-        process_equal(v1, v2, self.get_program_value_from_instr_ptr(3), codes)
+        res_pos = self.get_result_pos(op, 2, self.instr_ptr+3)
+        process_equal(v1, v2, res_pos, codes)
         self.instr_ptr += 4
       elif opcode == 9:
         v1 = self.get_parameter_value(op, 0, self.instr_ptr+1)
